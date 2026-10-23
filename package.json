@@ -50,6 +50,12 @@
         "title": "Open in ReqIF Browser",
         "category": "ReqIF",
         "icon": "$(open-preview)"
+      },
+      {
+        "command": "reqif.compare",
+        "title": "Compare ReqIF Files",
+        "category": "ReqIF",
+        "icon": "$(diff)"
       }
     ],
     "menus": {
@@ -73,6 +79,13 @@
         {
           "command": "reqif.openAsText",
           "when": "resourceExtname == .reqif"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "reqif.compare",
+          "when": "listMultiSelection && resourceExtname =~ /^\\.reqifz?$/i",
+          "group": "3_compare@9"
         }
       ]
     }

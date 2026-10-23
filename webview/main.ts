@@ -7,6 +7,7 @@ import { defaultLayout, EMPTY_LAYOUT, move, ordered, setHidden, setWidth, visibl
 import { cellText, DOCUMENT, IDENTIFIER, MAIN, mainCell, NUMBER, type Column, type ReqifDoc, type Row, type TocNode } from "../src/core/model";
 import type { ExportFormat, ExportTable, FromWebview, SavedFilter, ToWebview } from "../src/protocol";
 import { sameRules } from "../src/core/savedFilters";
+import { button, debounce, el } from "./dom";
 import { renderXhtml } from "./xhtml";
 
 declare function acquireVsCodeApi(): { postMessage(msg: FromWebview): void; getState(): unknown; setState(s: unknown): void };
@@ -71,27 +72,6 @@ let watcher: IntersectionObserver | undefined;
 let pinned: string | undefined;
 
 // --- helpers ------------------------------------------------------------------
-
-function el<K extends keyof HTMLElementTagNameMap>(tag: K, attrs: Record<string, string | undefined> = {}, ...children: (Node | string)[]): HTMLElementTagNameMap[K] {
-  const e = document.createElement(tag);
-  for (const [k, v] of Object.entries(attrs)) if (v !== undefined) e.setAttribute(k, v);
-  e.append(...children);
-  return e;
-}
-
-function button(label: string, onClick: (e: MouseEvent) => void, cls = "secondary", title?: string): HTMLButtonElement {
-  const b = el("button", { class: cls, title }, label);
-  b.onclick = onClick;
-  return b;
-}
-
-function debounce<A extends unknown[]>(fn: (...a: A) => void, ms: number): (...a: A) => void {
-  let t: ReturnType<typeof setTimeout> | undefined;
-  return (...a) => {
-    clearTimeout(t);
-    t = setTimeout(() => fn(...a), ms);
-  };
-}
 
 function docs(): ReqifDoc[] {
   return file?.docs ?? [];

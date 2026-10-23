@@ -54,7 +54,7 @@ describe("parseReqif", () => {
     expect(r.cells["Safety relevant"]?.text).toBe("true");
     expect(r.cells["ReqIF.Text"]?.text).toContain("> 6 mA DC");
     expect(r.cells["ReqIF.Text"]?.html).toContain("<xhtml:p>");
-    expect(cellText(r, IDENTIFIER)).toBe("LH-8");
+    expect(cellText(r, IDENTIFIER)).toBe("obj-LH-011");
     expect(doc.main).toBe("ReqIF.Text");
     expect(cellText(r, MAIN, doc)).toContain("Fehlerstrom");
     expect(cellText(doc.rows[0]!, MAIN, doc)).toBe("Einleitung");

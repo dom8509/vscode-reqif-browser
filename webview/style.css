@@ -590,3 +590,129 @@ button.add:hover {
   color: var(--vscode-list-activeSelectionForeground);
   background: var(--vscode-list-activeSelectionBackground);
 }
+
+/* --- compare --- */
+
+.compare-files .file.left .link {
+  color: var(--vscode-gitDecoration-deletedResourceForeground, #c74e39);
+}
+
+.compare-files .file.right .link {
+  color: var(--vscode-gitDecoration-addedResourceForeground, #81b88b);
+}
+
+button.link {
+  padding: 0;
+  background: none;
+  color: var(--vscode-textLink-foreground);
+}
+
+button.link:hover {
+  background: none;
+  text-decoration: underline;
+}
+
+button.chip {
+  border-radius: 10px;
+  opacity: 0.55;
+  color: var(--vscode-button-secondaryForeground);
+  background: var(--vscode-button-secondaryBackground);
+  border-left: 4px solid transparent;
+}
+
+button.chip.on {
+  opacity: 1;
+}
+
+button.chip.added { border-left-color: var(--diff-added-border); }
+button.chip.removed { border-left-color: var(--diff-removed-border); }
+button.chip.changed { border-left-color: var(--diff-changed-border); }
+button.chip.moved { border-left-color: var(--diff-moved-border); }
+
+:root {
+  --diff-added: var(--vscode-diffEditor-insertedLineBackground, rgba(155, 185, 85, 0.15));
+  --diff-removed: var(--vscode-diffEditor-removedLineBackground, rgba(255, 0, 0, 0.12));
+  --diff-added-text: var(--vscode-diffEditor-insertedTextBackground, rgba(155, 185, 85, 0.35));
+  --diff-removed-text: var(--vscode-diffEditor-removedTextBackground, rgba(255, 0, 0, 0.3));
+  --diff-added-border: var(--vscode-gitDecoration-addedResourceForeground, #81b88b);
+  --diff-removed-border: var(--vscode-gitDecoration-deletedResourceForeground, #c74e39);
+  --diff-changed-border: var(--vscode-gitDecoration-modifiedResourceForeground, #e2c08d);
+  --diff-moved-border: var(--vscode-gitDecoration-renamedResourceForeground, #73c991);
+}
+
+table.diff {
+  table-layout: auto;
+  width: 100%;
+}
+
+table.diff th {
+  cursor: default;
+  padding-right: 6px;
+}
+
+table.diff th:first-child {
+  width: 80px;
+}
+
+.moved-note {
+  margin-top: 2px;
+  font-size: 0.9em;
+  color: var(--diff-moved-border);
+}
+
+table.diff td:nth-child(4) {
+  min-width: 360px;
+}
+
+table.diff td:not(:nth-child(4)) .cell {
+  max-width: 320px;
+}
+
+table.diff > tbody > tr.diff-added > td {
+  background: var(--diff-added);
+}
+
+table.diff > tbody > tr.diff-removed > td {
+  background: var(--diff-removed);
+}
+
+table.diff > tbody > tr.diff-removed > td > .cell {
+  text-decoration: line-through;
+  text-decoration-color: var(--diff-removed-border);
+}
+
+table.diff > tbody > tr.diff-added > td:first-child { box-shadow: inset 3px 0 0 var(--diff-added-border); }
+table.diff > tbody > tr.diff-removed > td:first-child { box-shadow: inset 3px 0 0 var(--diff-removed-border); }
+table.diff > tbody > tr.diff-changed > td:first-child { box-shadow: inset 3px 0 0 var(--diff-changed-border); }
+
+td.changed ins {
+  text-decoration: none;
+  background: var(--diff-added-text);
+}
+
+td.changed del {
+  background: var(--diff-removed-text);
+}
+
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+
+.badge {
+  font-size: 0.85em;
+  padding: 0 5px;
+  border-radius: 8px;
+  white-space: nowrap;
+  border: 1px solid var(--vscode-panel-border);
+}
+
+.badge.added { border-color: var(--diff-added-border); color: var(--diff-added-border); }
+.badge.removed { border-color: var(--diff-removed-border); color: var(--diff-removed-border); }
+.badge.changed { border-color: var(--diff-changed-border); color: var(--diff-changed-border); }
+.badge.moved { border-color: var(--diff-moved-border); color: var(--diff-moved-border); }
+
+.column-list .badge {
+  margin-left: auto;
+}

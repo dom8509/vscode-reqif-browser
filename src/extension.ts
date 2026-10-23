@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import { compareCommand } from "./host/compareView";
 import { ReqifEditorProvider, VIEW_TYPE } from "./host/reqifEditor";
 
 export function activate(context: vscode.ExtensionContext): void {
@@ -13,6 +14,7 @@ export function activate(context: vscode.ExtensionContext): void {
       const uri = target ?? activeUri();
       if (uri) await vscode.commands.executeCommand("vscode.openWith", uri, "default");
     }),
+    vscode.commands.registerCommand("reqif.compare", (clicked?: vscode.Uri, selected?: vscode.Uri[]) => compareCommand(context, log, clicked, selected)),
     vscode.commands.registerCommand("reqif.openBrowser", async (target?: vscode.Uri) => {
       const uri = target ?? activeUri();
       if (uri) await vscode.commands.executeCommand("vscode.openWith", uri, VIEW_TYPE);

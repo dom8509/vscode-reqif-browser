@@ -1,6 +1,7 @@
 **
 !dist/extension.js
 !dist/webview.js
+!dist/compare.js
 !webview/style.css
 !package.json
 !README.md

@@ -16,6 +16,12 @@ const builds = [
     platform: "browser",
     format: "iife",
   },
+  {
+    entryPoints: ["webview/compare.ts"],
+    outfile: "dist/compare.js",
+    platform: "browser",
+    format: "iife",
+  },
 ];
 
 for (const options of builds) {

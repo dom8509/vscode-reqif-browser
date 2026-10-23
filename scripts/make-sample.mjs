@@ -51,10 +51,10 @@ const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, 
  * { id, text, status, priority, verification } for a requirement; `children` nests.
  */
 function reqif({ title, prefix, specs }) {
-  let n = 0;
   const objects = [];
   const hierarchy = (nodes) => nodes.map((node) => {
-    const id = `${prefix}-${++n}`;
+    // Stable identifiers, as tools keep them from export to export.
+    const id = node.heading ? `${prefix.toLowerCase()}-h-${node.heading.toLowerCase().replace(/[^a-z0-9]+/g, "-")}` : `obj-${node.id}`;
     const values = [];
     if (node.heading) {
       values.push(`<ATTRIBUTE-VALUE-STRING THE-VALUE="${esc(node.heading)}"><DEFINITION><ATTRIBUTE-DEFINITION-STRING-REF>ad-chapter</ATTRIBUTE-DEFINITION-STRING-REF></DEFINITION></ATTRIBUTE-VALUE-STRING>`);
@@ -158,14 +158,33 @@ const software = {
   }],
 };
 
+/** The Lastenheft after a review: a text and a status changed, one requirement moved, one removed, one added. */
+function revised(spec) {
+  const copy = structuredClone(spec);
+  const tree = copy.specs[0].tree;
+  const funktional = tree[1];
+  const laden = funktional.children[0];
+  const bedienung = funktional.children[1];
+  const nf = tree[2];
+  laden.children[0].text = "<xhtml:p>Die Ladestation <xhtml:b>muss</xhtml:b> mit bis zu 22 kW laden können.</xhtml:p>";
+  laden.children[2].status = "approved";
+  // LH-020 (RFID) moves from Bedienung to Laden.
+  laden.children.push(bedienung.children.shift());
+  nf.children.pop();
+  nf.children.push({ id: "LH-032", text: "<xhtml:p>Die Ladestation muss bei −30 °C noch starten.</xhtml:p>", status: "draft", priority: 3, verification: ["test"] });
+  copy.title = "Lastenheft Ladestation";
+  return copy;
+}
+
 mkdirSync("sample/files", { recursive: true });
 const image = png();
 writeFileSync("sample/files/led.png", image);
 writeFileSync("sample/lastenheft.reqif", reqif(lastenheft));
+writeFileSync("sample/lastenheft-v2.reqif", reqif(revised(lastenheft)));
 const zip = zipSync({
   "lastenheft.reqif": new TextEncoder().encode(reqif(lastenheft)),
   "software.reqif": new TextEncoder().encode(reqif(software)),
   "files/led.png": image,
 });
 writeFileSync("sample/project.reqifz", zip);
-console.log("Wrote sample/lastenheft.reqif, sample/project.reqifz, sample/files/led.png");
+console.log("Wrote sample/lastenheft.reqif, sample/lastenheft-v2.reqif, sample/project.reqifz, sample/files/led.png");

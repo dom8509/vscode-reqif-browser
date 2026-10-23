@@ -81,6 +81,25 @@ the file is never changed.
     on every column; numbers, true/false and dates are typed cells,
     chapters bold, the text indented.
   - *CSV:* plain text with commas, UTF-8 (Excel reads the umlauts).
+- **Compare two files:** select two `.reqif`/`.reqifz` files in the
+  Explorer (Ctrl/Cmd+click), right-click, *Compare ReqIF Files*. The
+  comparison opens in a tab of its own, the older file as *Old*. From the
+  Command Palette, *ReqIF: Compare ReqIF Files* asks for the two files.
+  - Requirements are matched by their ReqIF identifier; when the
+    identifiers differ (some tools give new ones on every export), by
+    `ReqIF.ForeignID`. The top right says which.
+  - **Added** rows are green, **Removed** red and struck through,
+    **Changed** values show word by word what went (red) and what came
+    (green). **Moved** marks a requirement now in another chapter, and
+    says from where to where. The `#` column shows `2.2 → 2.1` when a
+    chapter's number changed.
+  - The chips at the top show how many of each there are; click one to
+    show or hide those rows. *Unchanged* starts hidden. *Context* shows
+    the chapters of the rows shown, dimmed. The search box searches both
+    versions.
+  - *Columns ▾* picks the attributes to compare; the ones that changed
+    show at first. *⇄ Swap* swaps old and new, a file name opens that file
+    in the browser.
 - **Rich text:** XHTML attributes show formatted: paragraphs, lists,
   tables, bold, italic. Pictures embedded in a `.reqifz`, or next to a
   `.reqif`, show in the cell; other embedded files show as 📎 with their
@@ -110,7 +129,7 @@ first line of `ReqIF.Text`.
 npm install
 npm run build      # or: npm run watch
 npm run check      # typecheck, tests, build
-npm run sample     # writes sample/lastenheft.reqif and sample/project.reqifz
+npm run sample     # writes sample/lastenheft.reqif, lastenheft-v2.reqif and project.reqifz
 ```
 
 Press F5 in VS Code to start an Extension Development Host with the `sample`
@@ -122,8 +141,9 @@ GitHub.
 
 - `src/core/` reads files and holds the logic, with no VS Code in it:
   `reqif.ts` (ReqIF XML → documents, rows, table of contents), `load.ts`
-  (`.reqifz` archives), `filter.ts`, `savedFilters.ts`, `export.ts` (HTML, Excel, CSV), `layout.ts` (columns), `xhtml.ts`.
+  (`.reqifz` archives), `filter.ts`, `savedFilters.ts`, `export.ts` (HTML, Excel, CSV), `diff.ts` (compare), `layout.ts` (columns), `xhtml.ts`.
 - `src/host/reqifEditor.ts` is the read-only custom editor: it reads the file
-  and sends the documents to the webview.
-- `webview/` is the table, the table of contents and the filters; filtering
+  and sends the documents to the webview. `src/host/compareView.ts` is the
+  compare tab.
+- `webview/` is the table (`main.ts`), the compare tab (`compare.ts`), the table of contents and the filters; filtering
   runs here, so typing stays fast.

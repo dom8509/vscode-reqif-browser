@@ -1,5 +1,6 @@
 // Messages between the extension host and the browser webview.
 
+import type { DiffResult } from "./core/diff";
 import type { ExportFormat, ExportTable } from "./core/export";
 import type { FilterGroup } from "./core/filter";
 import type { Layout } from "./core/layout";
@@ -24,4 +25,22 @@ export type FromWebview =
   /** The table as shown, to save as a file. */
   | { type: "export"; to: ExportFormat; table: ExportTable };
 
-export type { ExportFormat, ExportTable, Layout, ReqifDoc, SavedFilter };
+// The compare tab.
+
+export interface CompareFile {
+  name: string;
+  path: string;
+  /** Last change on disk, in ms. */
+  modified: number;
+}
+
+export type CompareToWebview =
+  | { type: "compare"; left: CompareFile; right: CompareFile; diff: DiffResult; warnings: string[] }
+  | { type: "error"; message: string };
+
+export type CompareFromWebview =
+  | { type: "ready" }
+  | { type: "swap" }
+  | { type: "open"; side: "left" | "right" };
+
+export type { DiffResult, ExportFormat, ExportTable, Layout, ReqifDoc, SavedFilter };
