@@ -566,3 +566,27 @@ button.add:hover {
 .saved-select {
   min-width: 200px;
 }
+
+/* --- export menu --- */
+
+.popover.menu {
+  width: auto;
+  min-width: 300px;
+}
+
+.menu-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  text-align: left;
+  padding: 6px 10px;
+  border-radius: 0;
+  color: var(--vscode-editorWidget-foreground, var(--vscode-foreground));
+  background: transparent;
+}
+
+.menu-item:hover {
+  color: var(--vscode-list-activeSelectionForeground);
+  background: var(--vscode-list-activeSelectionBackground);
+}

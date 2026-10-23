@@ -1,5 +1,6 @@
 // Messages between the extension host and the browser webview.
 
+import type { ExportFormat, ExportTable } from "./core/export";
 import type { FilterGroup } from "./core/filter";
 import type { Layout } from "./core/layout";
 import type { ReqifDoc } from "./core/model";
@@ -19,6 +20,8 @@ export type FromWebview =
   /** Save the rules under a name: asks for one when there is none, and before replacing another filter. */
   | { type: "saveFilter"; name?: string; rules: FilterGroup }
   | { type: "deleteFilter"; name: string }
-  | { type: "copy"; text: string };
+  | { type: "copy"; text: string }
+  /** The table as shown, to save as a file. */
+  | { type: "export"; to: ExportFormat; table: ExportTable };
 
-export type { Layout, ReqifDoc, SavedFilter };
+export type { ExportFormat, ExportTable, Layout, ReqifDoc, SavedFilter };

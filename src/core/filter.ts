@@ -198,3 +198,19 @@ export function applyFilter(rows: Row[], shown: string[], spec: FilterSpec, text
   }
   return { rows: rows.filter((r) => keep.has(r)), matches };
 }
+
+/** The rules in words, for the head of an export: `Status is "Draft" and (Priority ≤ "1" or …)`. */
+export function describeRules(node: FilterNode, label: (column: string) => string = (c) => c): string {
+  if (node.kind === "cond") {
+    if (!active(node)) return "";
+    const op = OPERATORS.find((o) => o.op === node.op)!;
+    return `${label(node.column)} ${op.label}${op.needsValue ? ` "${node.value}"` : ""}`;
+  }
+  const parts = node.children.map((c) => {
+    const s = describeRules(c, label);
+    return c.kind === "group" && s ? `(${s})` : s;
+  }).filter(Boolean);
+  if (parts.length === 0) return "";
+  if (node.conj === "not") return `not (${parts.join(" or ")})`;
+  return parts.join(` ${node.conj} `);
+}

@@ -2,10 +2,10 @@
 // table on the right. Columns can be hidden, moved and resized; filters
 // search one document or all documents of the file.
 
-import { applyFilter, compile, CONJUNCTIONS, countConditions, EMPTY_GROUP, OPERATORS, type Condition, type Conjunction, type FilterGroup, type FilterNode, type FilterSpec, type Operator } from "../src/core/filter";
+import { applyFilter, compile, CONJUNCTIONS, countConditions, describeRules, EMPTY_GROUP, OPERATORS, type Condition, type Conjunction, type FilterGroup, type FilterNode, type FilterSpec, type Operator } from "../src/core/filter";
 import { defaultLayout, EMPTY_LAYOUT, move, ordered, setHidden, setWidth, visible, widthOf, type Layout } from "../src/core/layout";
 import { cellText, DOCUMENT, IDENTIFIER, MAIN, mainCell, NUMBER, type Column, type ReqifDoc, type Row, type TocNode } from "../src/core/model";
-import type { FromWebview, SavedFilter, ToWebview } from "../src/protocol";
+import type { ExportFormat, ExportTable, FromWebview, SavedFilter, ToWebview } from "../src/protocol";
 import { sameRules } from "../src/core/savedFilters";
 import { renderXhtml } from "./xhtml";
 
@@ -62,7 +62,9 @@ let wrap: HTMLElement | undefined;
 let tocEl: HTMLElement | undefined;
 let countEl: HTMLElement | undefined;
 let panel: HTMLElement | undefined;
-let panelKind: "columns" | "filter" | undefined;
+let panelKind: PanelKind | undefined;
+type PanelKind = "columns" | "filter" | "export";
+let exportBtn: HTMLButtonElement | undefined;
 let filterBtn: HTMLButtonElement | undefined;
 let watcher: IntersectionObserver | undefined;
 /** The row just jumped to: its chapter stays marked while the row is in view. */
@@ -243,6 +245,11 @@ function toolbar(): HTMLElement {
     save();
     render();
   }, "secondary", "Show each row in full, or cut long cells short"));
+  exportBtn = button("Export ▾", (e) => {
+    e.stopPropagation();
+    togglePanel("export");
+  }, "secondary", "Save the table as it is shown: filtered, with the shown columns");
+  bar.append(exportBtn);
   bar.append(button("Columns ▾", (e) => {
     e.stopPropagation();
     togglePanel("columns");
@@ -258,22 +265,26 @@ function closePanel(): void {
   panelKind = undefined;
 }
 
-function togglePanel(kind: "columns" | "filter"): void {
+function togglePanel(kind: PanelKind): void {
   const was = panelKind;
   closePanel();
   if (was === kind) return;
   openPanel(kind);
 }
 
-function openPanel(kind: "columns" | "filter"): void {
+function openPanel(kind: PanelKind): void {
   panelKind = kind;
-  panel = kind === "columns" ? columnsPanel() : filterPanel();
-  if (kind === "filter" && filterBtn) {
+  panel = kind === "columns" ? columnsPanel() : kind === "filter" ? filterPanel() : exportPanel();
+  const under = kind === "filter" ? filterBtn : kind === "export" ? exportBtn : undefined;
+  if (under) {
     // Under its button, as far right as the window allows.
-    panel.style.left = `${Math.max(8, filterBtn.getBoundingClientRect().left)}px`;
+    panel.style.left = `${Math.max(8, under.getBoundingClientRect().left)}px`;
     panel.style.right = "auto";
   }
   document.body.append(panel);
+  // Not past the right edge of the window.
+  const box = panel.getBoundingClientRect();
+  if (under && box.right > window.innerWidth - 8) panel.style.left = `${Math.max(8, window.innerWidth - box.width - 8)}px`;
 }
 
 function columnsPanel(): HTMLElement {
@@ -503,6 +514,68 @@ function filterPanel(): HTMLElement {
     el("div", { class: "popover-head" }, el("strong", {}, "Filters"), el("span", { class: "muted" }, `in ${where}`), el("span", { class: "spacer" }), clear),
     savedBar(),
     el("div", { class: "filter-body" }, filterNode(rules(), undefined, 0)),
+  );
+  return box;
+}
+
+// --- export -------------------------------------------------------------------
+
+/** What filters the table, in words, for the head of an exported page. */
+function filterText(): string {
+  const label = (id: string) => columns().find((c) => c.id === id)?.label ?? id;
+  const parts: string[] = [];
+  if (state.query.trim()) parts.push(`search "${state.query.trim()}"`);
+  for (const [id, q] of Object.entries(state.columns)) if (q.trim()) parts.push(`${label(id)} "${q.trim()}"`);
+  const rulesText = describeRules(rules(), label);
+  if (rulesText) parts.push(current() && !modified() ? `${current()!.name}: ${rulesText}` : rulesText);
+  return parts.join("; ");
+}
+
+/** The table as it is shown: the rows the filters let through, the shown columns in their order. */
+function exportTable(): ExportTable {
+  const cols = visible(columns(), layout);
+  const indent = indentColumn(cols);
+  const resources = file?.resources ?? {};
+  const box = document.createElement("div");
+  const title = allDocs() ? `${file?.name ?? ""} – all documents` : currentDoc()?.title ?? file?.name ?? "";
+  return {
+    title,
+    filter: filterText(),
+    columns: cols.map((c) => ({ label: c.label, type: c.type })),
+    indent: indent === undefined ? undefined : cols.findIndex((c) => c.id === indent),
+    rows: shown.map((row) => ({
+      heading: row.heading,
+      depth: row.depth,
+      context: !matches.has(row),
+      cells: cols.map((c) => {
+        const cell = c.id === MAIN ? mainCell(row, docOf(row)) : row.cells[c.id];
+        const t = text(row, c.id);
+        if (!cell?.html) return { text: t };
+        // The same safe HTML the table shows.
+        box.replaceChildren(renderXhtml(cell.html, resources));
+        return { text: t, html: box.innerHTML };
+      }),
+    })),
+  };
+}
+
+function exportPanel(): HTMLElement {
+  const box = el("div", { class: "popover menu" });
+  box.onclick = (e) => e.stopPropagation();
+  const item = (to: ExportFormat, label: string, hint: string) => {
+    const b = el("button", { class: "menu-item" }, el("span", {}, label), el("span", { class: "muted" }, hint));
+    b.onclick = () => {
+      closePanel();
+      send({ type: "export", to, table: exportTable() });
+    };
+    return b;
+  };
+  const what = `${shown.length} rows, ${visible(columns(), layout).length} columns`;
+  box.append(
+    el("div", { class: "popover-head" }, el("strong", {}, "Export"), el("span", { class: "muted" }, what)),
+    item("html", "HTML", "formatted, with pictures; print to PDF"),
+    item("xlsx", "Excel", "a filter on every column"),
+    item("csv", "CSV", "plain text"),
   );
   return box;
 }

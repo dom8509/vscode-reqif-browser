@@ -69,6 +69,16 @@ the file is never changed.
   *Context* keeps the chapters and parents of each match, dimmed, so you can
   see where a match is. *Clear filters* empties the search, the column filters and the rules. Ctrl+F (Cmd+F)
   goes to the search box.
+- **Export:** *Export ▾* saves the table as it is shown: only the rows
+  the filters let through (with their context rows), only the shown
+  columns, in their order. A save dialog asks where.
+  - *HTML:* a page with the rich text, tables and pictures, chapters bold
+    and the text indented as in the browser; the head names the filters.
+    Open it in a browser and print it to PDF, or open it in Word.
+  - *Excel:* an `.xlsx` with a bold header that stays in view and a filter
+    on every column; numbers, true/false and dates are typed cells,
+    chapters bold, the text indented.
+  - *CSV:* plain text with commas, UTF-8 (Excel reads the umlauts).
 - **Rich text:** XHTML attributes show formatted: paragraphs, lists,
   tables, bold, italic. Pictures embedded in a `.reqifz`, or next to a
   `.reqif`, show in the cell; other embedded files show as 📎 with their
@@ -110,7 +120,7 @@ GitHub.
 
 - `src/core/` reads files and holds the logic, with no VS Code in it:
   `reqif.ts` (ReqIF XML → documents, rows, table of contents), `load.ts`
-  (`.reqifz` archives), `filter.ts`, `savedFilters.ts`, `layout.ts` (columns), `xhtml.ts`.
+  (`.reqifz` archives), `filter.ts`, `savedFilters.ts`, `export.ts` (HTML, Excel, CSV), `layout.ts` (columns), `xhtml.ts`.
 - `src/host/reqifEditor.ts` is the read-only custom editor: it reads the file
   and sends the documents to the webview.
 - `webview/` is the table, the table of contents and the filters; filtering

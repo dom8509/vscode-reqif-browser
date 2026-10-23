@@ -2,6 +2,7 @@
 // the webview shows it and does the filtering, so typing stays fast.
 
 import * as vscode from "vscode";
+import { toCsv, toHtml, toXlsx, type ExportFormat, type ExportTable } from "../core/export";
 import type { FilterGroup } from "../core/filter";
 import type { Layout } from "../core/layout";
 import { remove, upsert, type SavedFilter } from "../core/savedFilters";
@@ -54,6 +55,8 @@ export class ReqifEditorProvider implements vscode.CustomReadonlyEditorProvider 
     const layoutKey = `layout:${uri.toString()}`;
     const rulesKey = `rules:${uri.toString()}`;
     let ready = false;
+    /** What the webview was sent last: export turns its image URLs back into files. */
+    let resources: Record<string, string> = {};
 
     const send = async () => {
       if (!ready) return;
@@ -73,7 +76,7 @@ export class ReqifEditorProvider implements vscode.CustomReadonlyEditorProvider 
         name: uri.path.split("/").pop() ?? "",
         docs: loaded.docs,
         warnings: loaded.warnings,
-        resources: this.resources(loaded, webview, folder),
+        resources: (resources = this.resources(loaded, webview, folder)),
         layout: this.context.workspaceState.get<Layout>(layoutKey),
         rules: this.context.workspaceState.get<FilterGroup>(rulesKey),
         savedName: this.context.workspaceState.get<string>(`${rulesKey}:name`),
@@ -112,6 +115,9 @@ export class ReqifEditorProvider implements vscode.CustomReadonlyEditorProvider 
           if (ok) await this.setSaved(remove(this.saved(), msg.name));
           break;
         }
+        case "export":
+          await this.export(uri, msg.to, msg.table, resources, folder);
+          break;
         case "copy":
           await vscode.env.clipboard.writeText(msg.text);
           void vscode.window.setStatusBarMessage("Copied", 2000);
@@ -125,6 +131,39 @@ export class ReqifEditorProvider implements vscode.CustomReadonlyEditorProvider 
       watcher.dispose();
       sub.dispose();
     });
+  }
+
+  private async export(uri: vscode.Uri, to: ExportFormat, table: ExportTable, resources: Record<string, string>, folder: vscode.Uri): Promise<void> {
+    const base = uri.path.split("/").pop()!.replace(/\.reqifz?$/i, "");
+    const name = `${base}${table.title.startsWith(base) ? "" : ` - ${table.title}`}.${to}`.replace(/[\\/:*?"<>|]/g, "_");
+    const filters: Record<string, string[]> = { html: { HTML: ["html"] }, xlsx: { Excel: ["xlsx"] }, csv: { CSV: ["csv"] } }[to];
+    const target = await vscode.window.showSaveDialog({ defaultUri: vscode.Uri.joinPath(folder, name), filters });
+    if (!target) return;
+    let out: string | Uint8Array;
+    if (to === "csv") out = toCsv(table);
+    else if (to === "xlsx") out = toXlsx(table);
+    else out = toHtml(await this.withImages(table, resources, folder));
+    await vscode.workspace.fs.writeFile(target, typeof out === "string" ? new TextEncoder().encode(out) : out);
+    const rows = `${table.rows.length} ${table.rows.length === 1 ? "row" : "rows"}`;
+    const open = await vscode.window.showInformationMessage(`Exported ${rows} to ${vscode.workspace.asRelativePath(target)}`, to === "html" ? "Open in Browser" : "Open");
+    if (open) await vscode.env.openExternal(target);
+  }
+
+  /** Pictures next to a .reqif show in the webview by a URL only it knows: the page gets them as data. */
+  private async withImages(table: ExportTable, resources: Record<string, string>, folder: vscode.Uri): Promise<ExportTable> {
+    const replace = new Map<string, string>();
+    for (const [target, url] of Object.entries(resources)) {
+      if (url.startsWith("data:")) continue;
+      const type = imageType(target);
+      const data = await vscode.workspace.fs.readFile(vscode.Uri.joinPath(folder, target)).then(undefined, () => undefined);
+      if (type && data && data.byteLength <= MAX_IMAGE) replace.set(url, `data:${type};base64,${toBase64(data)}`);
+    }
+    if (replace.size === 0) return table;
+    const fix = (html: string) => {
+      for (const [url, data] of replace) html = html.split(url).join(data);
+      return html;
+    };
+    return { ...table, rows: table.rows.map((r) => ({ ...r, cells: r.cells.map((c) => (c.html ? { ...c, html: fix(c.html) } : c)) })) };
   }
 
   private saved(): SavedFilter[] {
