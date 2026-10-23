@@ -1,9 +1,17 @@
-# ReqIF Browser for VS Code
+# ReqIF Tools for VS Code
 
-Opens `.reqif` and `.reqifz` files (the [OMG Requirements Interchange
+Tools for `.reqif` and `.reqifz` files (the [OMG Requirements Interchange
 Format](https://www.omg.org/spec/ReqIF/), as exported by DOORS, Polarion,
-codebeamer, PTC and others) as a table with a table of contents. Read-only:
-the file is never changed.
+codebeamer, PTC and others): the **ReqIF Browser** opens them as a table
+with a table of contents, filters and export to HTML, Excel and CSV; the
+**compare view** shows what changed between two files. Read-only: files are
+never changed.
+
+## Install
+
+Download `vscode-reqif-tools-v….vsix` from the
+[latest release](https://github.com/dom8509/vscode-reqif-tools/releases/latest),
+then in VS Code run *Extensions: Install from VSIX…* and pick the file.
 
 ## Using it
 

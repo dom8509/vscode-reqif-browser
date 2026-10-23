@@ -1,17 +1,17 @@
 {
-  "name": "vscode-reqif-browser",
-  "displayName": "ReqIF Browser",
-  "description": "Browse ReqIF (.reqif) and ReqIFz (.reqifz) files as a table with a table of contents, column layout and filters.",
+  "name": "vscode-reqif-tools",
+  "displayName": "ReqIF Tools",
+  "description": "Browse, filter, export and compare ReqIF (.reqif) and ReqIFz (.reqifz) files: a table with a table of contents, column layout, filters, export to HTML, Excel and CSV, and a compare view.",
   "version": "0.1.0",
   "publisher": "dom8509",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/dom8509/vscode-reqif-browser.git"
+    "url": "https://github.com/dom8509/vscode-reqif-tools.git"
   },
-  "homepage": "https://github.com/dom8509/vscode-reqif-browser#readme",
+  "homepage": "https://github.com/dom8509/vscode-reqif-tools#readme",
   "bugs": {
-    "url": "https://github.com/dom8509/vscode-reqif-browser/issues"
+    "url": "https://github.com/dom8509/vscode-reqif-tools/issues"
   },
   "engines": {
     "vscode": "^1.95.0"

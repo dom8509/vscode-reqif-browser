@@ -75,7 +75,7 @@ function reqif({ title, prefix, specs }) {
   const def = (kind, id, name, dt, extra = "") => `<ATTRIBUTE-DEFINITION-${kind} IDENTIFIER="${id}" LONG-NAME="${name}" LAST-CHANGE="2026-01-15T10:00:00Z"${kind === "ENUMERATION" ? ` MULTI-VALUED="${id === "ad-verification"}"` : ""}><TYPE><DATATYPE-DEFINITION-${kind}-REF>${dt}</DATATYPE-DEFINITION-${kind}-REF></TYPE>${extra}</ATTRIBUTE-DEFINITION-${kind}>`;
   return `<?xml version="1.0" encoding="UTF-8"?>
 <REQ-IF xmlns="http://www.omg.org/spec/ReqIF/20110401/reqif.xsd" xmlns:xhtml="http://www.w3.org/1999/xhtml">
-<THE-HEADER><REQ-IF-HEADER IDENTIFIER="${prefix}-header"><CREATION-TIME>2026-01-15T10:00:00Z</CREATION-TIME><REQ-IF-TOOL-ID>vscode-reqif-browser sample</REQ-IF-TOOL-ID><REQ-IF-VERSION>1.0</REQ-IF-VERSION><SOURCE-TOOL-ID>sample</SOURCE-TOOL-ID><TITLE>${esc(title)}</TITLE></REQ-IF-HEADER></THE-HEADER>
+<THE-HEADER><REQ-IF-HEADER IDENTIFIER="${prefix}-header"><CREATION-TIME>2026-01-15T10:00:00Z</CREATION-TIME><REQ-IF-TOOL-ID>vscode-reqif-tools sample</REQ-IF-TOOL-ID><REQ-IF-VERSION>1.0</REQ-IF-VERSION><SOURCE-TOOL-ID>sample</SOURCE-TOOL-ID><TITLE>${esc(title)}</TITLE></REQ-IF-HEADER></THE-HEADER>
 <CORE-CONTENT><REQ-IF-CONTENT>
 <DATATYPES>
 <DATATYPE-DEFINITION-STRING IDENTIFIER="dt-string" LONG-NAME="String" MAX-LENGTH="1000" LAST-CHANGE="2026-01-15T10:00:00Z"/>

@@ -3,7 +3,7 @@ import { compareCommand } from "./host/compareView";
 import { ReqifEditorProvider, VIEW_TYPE } from "./host/reqifEditor";
 
 export function activate(context: vscode.ExtensionContext): void {
-  const log = vscode.window.createOutputChannel("ReqIF Browser", { log: true });
+  const log = vscode.window.createOutputChannel("ReqIF Tools", { log: true });
   context.subscriptions.push(
     log,
     vscode.window.registerCustomEditorProvider(VIEW_TYPE, new ReqifEditorProvider(context, log), {
