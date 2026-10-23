@@ -63,8 +63,8 @@ the file is never changed.
     you open, in any workspace; pick one to use its rules. Change them and
     the button shows `*`: *Update* saves the change into the named filter,
     *Revert* goes back to it. *Delete* removes it everywhere. A condition
-    on a column a file does not have shows "(not in this document)" and
-    matches nothing there.
+    on a column a file does not have shows "(not in this document)"; there
+    the column counts as empty.
 
   *Context* keeps the chapters and parents of each match, dimmed, so you can
   see where a match is. *Clear filters* empties the search, the column filters and the rules. Ctrl+F (Cmd+F)
