@@ -5,7 +5,8 @@
 import { applyFilter, compile, CONJUNCTIONS, countConditions, EMPTY_GROUP, OPERATORS, type Condition, type Conjunction, type FilterGroup, type FilterNode, type FilterSpec, type Operator } from "../src/core/filter";
 import { defaultLayout, EMPTY_LAYOUT, move, ordered, setHidden, setWidth, visible, widthOf, type Layout } from "../src/core/layout";
 import { cellText, DOCUMENT, IDENTIFIER, MAIN, mainCell, NUMBER, type Column, type ReqifDoc, type Row, type TocNode } from "../src/core/model";
-import type { FromWebview, ToWebview } from "../src/protocol";
+import type { FromWebview, SavedFilter, ToWebview } from "../src/protocol";
+import { sameRules } from "../src/core/savedFilters";
 import { renderXhtml } from "./xhtml";
 
 declare function acquireVsCodeApi(): { postMessage(msg: FromWebview): void; getState(): unknown; setState(s: unknown): void };
@@ -25,6 +26,8 @@ interface ViewState {
   compact: boolean;
   /** The filter rules of the filter panel; also kept per file by the extension. */
   rules?: FilterGroup;
+  /** The named filter the rules came from, if any. */
+  savedName?: string;
 }
 
 const state: ViewState = {
@@ -44,6 +47,8 @@ const save = () => vscode.setState(state);
 let file: Extract<ToWebview, { type: "load" }> | undefined;
 let layout: Layout = EMPTY_LAYOUT;
 let error: string | undefined;
+/** Named filters, the same in every ReqIF file. */
+let saved: SavedFilter[] = [];
 
 /** The rows the filters let through, and which of them the table has drawn: [first, drawn). */
 let shown: Row[] = [];
@@ -224,6 +229,7 @@ function toolbar(): HTMLElement {
     state.query = "";
     state.columns = {};
     state.rules = structuredClone(EMPTY_GROUP);
+    state.savedName = undefined;
     saveRules();
     closePanel();
     render();
@@ -314,11 +320,12 @@ function redraw(): void {
 function updateFilterButton(): void {
   if (!filterBtn) return;
   const n = countConditions(rules());
-  filterBtn.textContent = n ? `Filter (${n}) ▾` : "Filter ▾";
+  const name = current()?.name;
+  filterBtn.textContent = name ? `Filter: ${name}${modified() ? " *" : ""} ▾` : n ? `Filter (${n}) ▾` : "Filter ▾";
   filterBtn.classList.toggle("on", n > 0);
 }
 
-const sendRules = debounce(() => send({ type: "rules", rules: rules() }), 400);
+const sendRules = debounce(() => send({ type: "rules", rules: rules(), savedName: state.savedName }), 400);
 
 function saveRules(): void {
   save();
@@ -339,6 +346,8 @@ function rulesChanged(structure: boolean): void {
     }
   } else {
     refreshSoon();
+    // Update and Revert show once the rules differ from the named filter.
+    panel?.querySelector(".saved-bar")?.replaceWith(savedBar());
   }
 }
 
@@ -444,16 +453,55 @@ function validRegex(source: string): boolean {
   }
 }
 
+/** The named filter the rules came from, while it still exists. */
+function current(): SavedFilter | undefined {
+  return state.savedName === undefined ? undefined : saved.find((f) => f.name === state.savedName);
+}
+
+/** Whether the rules were changed since the named filter was picked. */
+function modified(): boolean {
+  const f = current();
+  return f !== undefined && !sameRules(f.rules, rules());
+}
+
+/** Picks a named filter: its rules replace the ones in this file. */
+function applySaved(name: string): void {
+  const f = saved.find((x) => x.name === name);
+  state.rules = f ? structuredClone(f.rules) : structuredClone(EMPTY_GROUP);
+  state.savedName = f?.name;
+  rulesChanged(true);
+}
+
+/** The named filters: pick one, save the rules as one, update or delete it. */
+function savedBar(): HTMLElement {
+  const f = current();
+  const options = [{ value: "", label: saved.length ? "— Saved filters —" : "No saved filters yet" }, ...saved.map((x) => ({ value: x.name, label: x.name }))];
+  const pick = selectEl(options, f?.name ?? "", (v) => (v ? applySaved(v) : undefined), "saved-select");
+  pick.title = "Filters saved here can be used in every ReqIF file";
+  const bar = el("div", { class: "saved-bar" }, pick);
+  if (f && modified()) {
+    bar.append(
+      button("Update", () => send({ type: "saveFilter", name: f.name, rules: rules() }), "secondary", `Save the changes into "${f.name}"`),
+      button("Revert", () => applySaved(f.name), "secondary", `Back to "${f.name}" as saved`),
+    );
+  }
+  bar.append(button("Save as…", () => send({ type: "saveFilter", rules: rules() }), "secondary", "Save these rules under a name, for every ReqIF file"));
+  if (f) bar.append(button("Delete", () => send({ type: "deleteFilter", name: f.name }), "secondary", `Delete "${f.name}" from every ReqIF file`));
+  return bar;
+}
+
 function filterPanel(): HTMLElement {
   const box = el("div", { class: "popover filter-panel" });
   box.onclick = (e) => e.stopPropagation();
   const clear = button("Clear", () => {
     state.rules = structuredClone(EMPTY_GROUP);
+    state.savedName = undefined;
     rulesChanged(true);
   }, "secondary", "Remove every filter rule");
   const where = allDocs() ? "all documents" : "this document";
   box.append(
     el("div", { class: "popover-head" }, el("strong", {}, "Filters"), el("span", { class: "muted" }, `in ${where}`), el("span", { class: "spacer" }), clear),
+    savedBar(),
     el("div", { class: "filter-body" }, filterNode(rules(), undefined, 0)),
   );
   return box;
@@ -910,9 +958,24 @@ window.addEventListener("message", (e: MessageEvent<ToWebview>) => {
   } else if (msg.type === "load") {
     error = undefined;
     // The rules of this tab, else those kept for the file.
-    if (!file && !state.rules?.children.length) state.rules = msg.rules ?? structuredClone(EMPTY_GROUP);
+    if (!file && !state.rules?.children.length) {
+      state.rules = msg.rules ?? structuredClone(EMPTY_GROUP);
+      state.savedName = msg.savedName;
+    }
     file = msg;
     layout = msg.layout ?? defaultLayout(msg.docs);
+    saved = msg.saved;
+  } else if (msg.type === "saved") {
+    saved = msg.saved;
+    if (msg.applied !== undefined) state.savedName = msg.applied;
+    saveRules();
+    // Only the filter panel shows them: keep the table and the focus as they are.
+    updateFilterButton();
+    if (panelKind === "filter") {
+      closePanel();
+      openPanel("filter");
+    }
+    return;
   }
   render();
 });

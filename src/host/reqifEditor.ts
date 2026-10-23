@@ -4,11 +4,14 @@
 import * as vscode from "vscode";
 import type { FilterGroup } from "../core/filter";
 import type { Layout } from "../core/layout";
+import { remove, upsert, type SavedFilter } from "../core/savedFilters";
 import { imageType, load, resolveIn, type Loaded } from "../core/load";
 import { objectRefs } from "../core/xhtml";
 import type { FromWebview, ToWebview } from "../protocol";
 
 export const VIEW_TYPE = "reqif.browser";
+
+const SAVED_KEY = "savedFilters";
 
 /** Embedded images larger than this show as a link-less placeholder. */
 const MAX_IMAGE = 8 * 1024 * 1024;
@@ -25,6 +28,9 @@ function toBase64(bytes: Uint8Array): string {
 }
 
 export class ReqifEditorProvider implements vscode.CustomReadonlyEditorProvider {
+  /** Every open browser, to tell them all when the named filters change. */
+  private readonly webviews = new Set<vscode.Webview>();
+
   constructor(
     private readonly context: vscode.ExtensionContext,
     private readonly log: vscode.LogOutputChannel,
@@ -70,6 +76,8 @@ export class ReqifEditorProvider implements vscode.CustomReadonlyEditorProvider 
         resources: this.resources(loaded, webview, folder),
         layout: this.context.workspaceState.get<Layout>(layoutKey),
         rules: this.context.workspaceState.get<FilterGroup>(rulesKey),
+        savedName: this.context.workspaceState.get<string>(`${rulesKey}:name`),
+        saved: this.saved(),
       });
     };
 
@@ -94,18 +102,51 @@ export class ReqifEditorProvider implements vscode.CustomReadonlyEditorProvider 
           break;
         case "rules":
           await this.context.workspaceState.update(rulesKey, msg.rules.children.length ? msg.rules : undefined);
+          await this.context.workspaceState.update(`${rulesKey}:name`, msg.savedName);
           break;
+        case "saveFilter":
+          await this.saveFilter(webview, msg.name, msg.rules);
+          break;
+        case "deleteFilter": {
+          const ok = await vscode.window.showWarningMessage(`Delete the filter "${msg.name}"? It is gone from every ReqIF file.`, { modal: true }, "Delete");
+          if (ok) await this.setSaved(remove(this.saved(), msg.name));
+          break;
+        }
         case "copy":
           await vscode.env.clipboard.writeText(msg.text);
           void vscode.window.setStatusBarMessage("Copied", 2000);
           break;
       }
     });
+    this.webviews.add(webview);
     panel.onDidDispose(() => {
+      this.webviews.delete(webview);
       clearTimeout(timer);
       watcher.dispose();
       sub.dispose();
     });
+  }
+
+  private saved(): SavedFilter[] {
+    return this.context.globalState.get<SavedFilter[]>(SAVED_KEY) ?? [];
+  }
+
+  private async setSaved(list: SavedFilter[], from?: vscode.Webview, applied?: string): Promise<void> {
+    await this.context.globalState.update(SAVED_KEY, list);
+    for (const w of this.webviews) void w.postMessage({ type: "saved", saved: list, applied: w === from ? applied : undefined } satisfies ToWebview);
+  }
+
+  private async saveFilter(webview: vscode.Webview, name: string | undefined, rules: FilterGroup): Promise<void> {
+    const list = this.saved();
+    if (name === undefined) {
+      name = (await vscode.window.showInputBox({ title: "Save filter", prompt: "Name of the filter; it can be used in every ReqIF file", placeHolder: "e.g. Open safety requirements" }))?.trim();
+      if (!name) return;
+      if (list.some((f) => f.name === name)) {
+        const ok = await vscode.window.showWarningMessage(`A filter "${name}" exists. Replace it?`, { modal: true }, "Replace");
+        if (!ok) return;
+      }
+    }
+    await this.setSaved(upsert(list, name, rules), webview, name);
   }
 
   /** URLs for the files the documents embed: data URLs from a .reqifz, webview URLs next to a .reqif. */

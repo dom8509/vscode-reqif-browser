@@ -58,6 +58,13 @@ the file is never changed.
     works. × removes a condition or group.
   - The button shows how many conditions filter. The rules are kept per
     file, also after VS Code restarts.
+  - **Saved filters, for every file:** *Save as…* saves the rules under a
+    name. The list at the top of the panel has them in every ReqIF file
+    you open, in any workspace; pick one to use its rules. Change them and
+    the button shows `*`: *Update* saves the change into the named filter,
+    *Revert* goes back to it. *Delete* removes it everywhere. A condition
+    on a column a file does not have shows "(not in this document)" and
+    matches nothing there.
 
   *Context* keeps the chapters and parents of each match, dimmed, so you can
   see where a match is. *Clear filters* empties the search, the column filters and the rules. Ctrl+F (Cmd+F)
@@ -103,7 +110,7 @@ GitHub.
 
 - `src/core/` reads files and holds the logic, with no VS Code in it:
   `reqif.ts` (ReqIF XML → documents, rows, table of contents), `load.ts`
-  (`.reqifz` archives), `filter.ts`, `layout.ts` (columns), `xhtml.ts`.
+  (`.reqifz` archives), `filter.ts`, `savedFilters.ts`, `layout.ts` (columns), `xhtml.ts`.
 - `src/host/reqifEditor.ts` is the read-only custom editor: it reads the file
   and sends the documents to the webview.
 - `webview/` is the table, the table of contents and the filters; filtering

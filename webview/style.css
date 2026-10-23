@@ -553,3 +553,16 @@ button.add {
 button.add:hover {
   background: var(--vscode-toolbar-hoverBackground, var(--vscode-list-hoverBackground));
 }
+
+.saved-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px;
+  border-bottom: 1px solid var(--vscode-panel-border);
+}
+
+.saved-select {
+  min-width: 200px;
+}
