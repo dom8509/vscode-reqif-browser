@@ -56,6 +56,8 @@ the file is never changed.
     *None* (not). *+ Add filter group* adds a group with its own choice, so
     `Status is Approved and (Priority ≤ 1 or Safety relevant is true)`
     works. × removes a condition or group.
+  - Chapters never match a rule (they have no status, priority and the
+    like): with *Context* they show dimmed above their requirements.
   - The button shows how many conditions filter. The rules are kept per
     file, also after VS Code restarts.
   - **Saved filters, for every file:** *Save as…* saves the rules under a

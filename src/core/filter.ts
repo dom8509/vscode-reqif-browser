@@ -181,7 +181,8 @@ export function applyFilter(rows: Row[], shown: string[], spec: FilterSpec, text
   for (const row of rows) {
     if (!perColumn.every(([col, t]) => t(text(row, col)))) continue;
     if (search && !search(shown.map((c) => text(row, c)).join("\n"))) continue;
-    if (rules && !evaluate(rules, row, text)) continue;
+    // Chapters have no status, priority and the like: rules are for requirements, chapters only show as context.
+    if (rules && (row.heading || !evaluate(rules, row, text))) continue;
     matches.add(row);
   }
   if (!spec.context) return { rows: rows.filter((r) => matches.has(r)), matches };

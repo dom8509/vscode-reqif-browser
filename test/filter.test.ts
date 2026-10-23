@@ -99,6 +99,14 @@ describe("filter rules", () => {
     expect(applyFilter(rows, ["Text"], { query: "", columns: {}, rules: g, context: false }, (r, c) => cellText(r, c)).rows).toBe(rows);
   });
 
+  it("never lets chapters match rules: they only show as context", () => {
+    const g: FilterGroup = { kind: "group", conj: "and", children: [cond("isNot", "Approved")] };
+    const r = applyFilter(rows, ["Text"], { query: "", columns: {}, rules: g, context: true }, (x, c) => cellText(x, c));
+    expect(r.rows.map((x) => x.key)).toEqual(["0:a", "0:c"]);
+    expect([...r.matches].map((x) => x.key)).toEqual(["0:c"]);
+    expect(applyFilter(rows, ["Text"], { query: "", columns: {}, rules: g, context: false }, (x, c) => cellText(x, c)).rows.map((x) => x.key)).toEqual(["0:c"]);
+  });
+
   it("filters rows with the rules, keeping parents for context", () => {
     const g: FilterGroup = { kind: "group", conj: "and", children: [cond("is", "Draft")] };
     const r = applyFilter(rows, ["Text"], { query: "", columns: {}, rules: g, context: true }, (x, c) => cellText(x, c));
