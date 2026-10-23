@@ -1,0 +1,101 @@
+{
+  "name": "vscode-reqif-browser",
+  "displayName": "ReqIF Browser",
+  "description": "Browse ReqIF (.reqif) and ReqIFz (.reqifz) files as a table with a table of contents, column layout and filters.",
+  "version": "0.1.0",
+  "publisher": "dom8509",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dom8509/vscode-reqif-browser.git"
+  },
+  "homepage": "https://github.com/dom8509/vscode-reqif-browser#readme",
+  "bugs": {
+    "url": "https://github.com/dom8509/vscode-reqif-browser/issues"
+  },
+  "engines": {
+    "vscode": "^1.95.0"
+  },
+  "categories": [
+    "Visualization",
+    "Other"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": [],
+  "contributes": {
+    "customEditors": [
+      {
+        "viewType": "reqif.browser",
+        "displayName": "ReqIF Browser",
+        "selector": [
+          {
+            "filenamePattern": "*.reqif"
+          },
+          {
+            "filenamePattern": "*.reqifz"
+          }
+        ],
+        "priority": "default"
+      }
+    ],
+    "commands": [
+      {
+        "command": "reqif.openAsText",
+        "title": "Open ReqIF as Text",
+        "category": "ReqIF",
+        "icon": "$(go-to-file)"
+      },
+      {
+        "command": "reqif.openBrowser",
+        "title": "Open in ReqIF Browser",
+        "category": "ReqIF",
+        "icon": "$(open-preview)"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "reqif.openBrowser",
+          "when": "resourceExtname == .reqif && !activeCustomEditorId",
+          "group": "navigation"
+        },
+        {
+          "command": "reqif.openAsText",
+          "when": "activeCustomEditorId == reqif.browser && resourceExtname == .reqif",
+          "group": "navigation"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "reqif.openBrowser",
+          "when": "resourceExtname == .reqif || resourceExtname == .reqifz"
+        },
+        {
+          "command": "reqif.openAsText",
+          "when": "resourceExtname == .reqif"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "build": "node esbuild.mjs",
+    "watch": "node esbuild.mjs --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "check": "npm run typecheck && npm test && npm run build",
+    "package": "npm run check && vsce package",
+    "sample": "node scripts/make-sample.mjs"
+  },
+  "dependencies": {
+    "fast-xml-parser": "^5.11.2",
+    "fflate": "^0.8.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "@types/vscode": "~1.95.0",
+    "@vscode/vsce": "^3.9.2",
+    "esbuild": "^0.28.2",
+    "typescript": "~5.9.3",
+    "vitest": "^5.0.5"
+  }
+}
