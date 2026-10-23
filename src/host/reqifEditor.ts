@@ -2,6 +2,7 @@
 // the webview shows it and does the filtering, so typing stays fast.
 
 import * as vscode from "vscode";
+import type { FilterGroup } from "../core/filter";
 import type { Layout } from "../core/layout";
 import { imageType, load, resolveIn, type Loaded } from "../core/load";
 import { objectRefs } from "../core/xhtml";
@@ -45,6 +46,7 @@ export class ReqifEditorProvider implements vscode.CustomReadonlyEditorProvider 
 
     const post = (msg: ToWebview) => void webview.postMessage(msg);
     const layoutKey = `layout:${uri.toString()}`;
+    const rulesKey = `rules:${uri.toString()}`;
     let ready = false;
 
     const send = async () => {
@@ -67,6 +69,7 @@ export class ReqifEditorProvider implements vscode.CustomReadonlyEditorProvider 
         warnings: loaded.warnings,
         resources: this.resources(loaded, webview, folder),
         layout: this.context.workspaceState.get<Layout>(layoutKey),
+        rules: this.context.workspaceState.get<FilterGroup>(rulesKey),
       });
     };
 
@@ -88,6 +91,9 @@ export class ReqifEditorProvider implements vscode.CustomReadonlyEditorProvider 
           break;
         case "layout":
           await this.context.workspaceState.update(layoutKey, msg.layout);
+          break;
+        case "rules":
+          await this.context.workspaceState.update(rulesKey, msg.rules.children.length ? msg.rules : undefined);
           break;
         case "copy":
           await vscode.env.clipboard.writeText(msg.text);

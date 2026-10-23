@@ -2,7 +2,7 @@
 // table on the right. Columns can be hidden, moved and resized; filters
 // search one document or all documents of the file.
 
-import { applyFilter, compile, type FilterSpec } from "../src/core/filter";
+import { applyFilter, compile, CONJUNCTIONS, countConditions, EMPTY_GROUP, OPERATORS, type Condition, type Conjunction, type FilterGroup, type FilterNode, type FilterSpec, type Operator } from "../src/core/filter";
 import { defaultLayout, EMPTY_LAYOUT, move, ordered, setHidden, setWidth, visible, widthOf, type Layout } from "../src/core/layout";
 import { cellText, DOCUMENT, IDENTIFIER, MAIN, mainCell, NUMBER, type Column, type ReqifDoc, type Row, type TocNode } from "../src/core/model";
 import type { FromWebview, ToWebview } from "../src/protocol";
@@ -23,6 +23,8 @@ interface ViewState {
   tocWidth: number;
   collapsed: string[];
   compact: boolean;
+  /** The filter rules of the filter panel; also kept per file by the extension. */
+  rules?: FilterGroup;
 }
 
 const state: ViewState = {
@@ -55,6 +57,8 @@ let wrap: HTMLElement | undefined;
 let tocEl: HTMLElement | undefined;
 let countEl: HTMLElement | undefined;
 let panel: HTMLElement | undefined;
+let panelKind: "columns" | "filter" | undefined;
+let filterBtn: HTMLButtonElement | undefined;
 let watcher: IntersectionObserver | undefined;
 /** The row just jumped to: its chapter stays marked while the row is in view. */
 let pinned: string | undefined;
@@ -118,11 +122,15 @@ function text(row: Row, column: string): string {
 }
 
 function filterSpec(): FilterSpec {
-  return { query: state.query, columns: state.columns, context: state.context };
+  return { query: state.query, columns: state.columns, rules: state.rules, context: state.context };
+}
+
+function rules(): FilterGroup {
+  return (state.rules ??= structuredClone(EMPTY_GROUP));
 }
 
 function filtering(): boolean {
-  return state.query.trim() !== "" || Object.values(state.columns).some((q) => q.trim() !== "");
+  return state.query.trim() !== "" || Object.values(state.columns).some((q) => q.trim() !== "") || countConditions(rules()) > 0;
 }
 
 function setLayout(next: Layout): void {
@@ -205,12 +213,21 @@ function toolbar(): HTMLElement {
   ctx.append(box, " Context");
   bar.append(ctx);
 
+  filterBtn = button("", (e) => {
+    e.stopPropagation();
+    togglePanel("filter");
+  }, "secondary", "Build filters: conditions on columns, in groups (all, any, none)");
+  updateFilterButton();
+  bar.append(filterBtn);
+
   bar.append(button("Clear filters", () => {
     state.query = "";
     state.columns = {};
-    save();
+    state.rules = structuredClone(EMPTY_GROUP);
+    saveRules();
+    closePanel();
     render();
-  }, "secondary", "Clear the search and every column filter"));
+  }, "secondary", "Clear the search, every column filter and the filter rules"));
 
   bar.append(el("span", { class: "spacer" }));
   countEl = el("span", { class: "count" });
@@ -222,7 +239,7 @@ function toolbar(): HTMLElement {
   }, "secondary", "Show each row in full, or cut long cells short"));
   bar.append(button("Columns ▾", (e) => {
     e.stopPropagation();
-    togglePanel();
+    togglePanel("columns");
   }, "secondary", "Show, hide and order the columns"));
   return bar;
 }
@@ -232,14 +249,24 @@ function toolbar(): HTMLElement {
 function closePanel(): void {
   panel?.remove();
   panel = undefined;
+  panelKind = undefined;
 }
 
-function togglePanel(): void {
-  if (panel) {
-    closePanel();
-    return;
+function togglePanel(kind: "columns" | "filter"): void {
+  const was = panelKind;
+  closePanel();
+  if (was === kind) return;
+  openPanel(kind);
+}
+
+function openPanel(kind: "columns" | "filter"): void {
+  panelKind = kind;
+  panel = kind === "columns" ? columnsPanel() : filterPanel();
+  if (kind === "filter" && filterBtn) {
+    // Under its button, as far right as the window allows.
+    panel.style.left = `${Math.max(8, filterBtn.getBoundingClientRect().left)}px`;
+    panel.style.right = "auto";
   }
-  panel = columnsPanel();
   document.body.append(panel);
 }
 
@@ -271,12 +298,165 @@ function columnsPanel(): HTMLElement {
   return box;
 }
 
-/** Redraws after a layout change, keeping the columns panel open. */
+/** Redraws after a layout change, keeping the open panel open. */
 function redraw(): void {
-  const open = panel !== undefined;
+  const open = panelKind;
   closePanel();
   render();
-  if (open) togglePanel();
+  if (open) openPanel(open);
+}
+
+// --- filter panel -------------------------------------------------------------
+//
+// As in vscode-bases: conditions (column, operator, value) in groups that need
+// all, any or none of them to be true; groups nest.
+
+function updateFilterButton(): void {
+  if (!filterBtn) return;
+  const n = countConditions(rules());
+  filterBtn.textContent = n ? `Filter (${n}) ▾` : "Filter ▾";
+  filterBtn.classList.toggle("on", n > 0);
+}
+
+const sendRules = debounce(() => send({ type: "rules", rules: rules() }), 400);
+
+function saveRules(): void {
+  save();
+  sendRules();
+}
+
+/** After the rules changed: filter again, and draw the panel again when its shape changed. */
+function rulesChanged(structure: boolean): void {
+  saveRules();
+  updateFilterButton();
+  if (structure) {
+    refreshRows();
+    if (panelKind === "filter") {
+      const scroll = panel?.querySelector(".filter-body")?.scrollTop ?? 0;
+      closePanel();
+      openPanel("filter");
+      panel?.querySelector(".filter-body")?.scrollTo({ top: scroll });
+    }
+  } else {
+    refreshSoon();
+  }
+}
+
+function newCondition(): Condition {
+  const cols = columns();
+  const column = cols.find((c) => !c.id.startsWith("@"))?.id ?? cols[0]?.id ?? "";
+  return { kind: "cond", column, op: "contains", value: "" };
+}
+
+/** The values a column holds, for the value field to suggest, when there are few of them. */
+function suggestions(column: string): string[] {
+  const values = new Set<string>();
+  for (const r of rowsInScope()) {
+    const t = text(r, column).trim();
+    if (!t || t.length > 60) continue;
+    for (const part of t.split(/\s*,\s*/)) values.add(part);
+    if (values.size > 100) return [];
+  }
+  return [...values].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+}
+
+function selectEl<T extends string>(options: { value: T; label: string }[], value: T, onChange: (v: T) => void, cls?: string): HTMLSelectElement {
+  const sel = el("select", { class: cls });
+  for (const o of options) sel.append(el("option", { value: o.value }, o.label));
+  sel.value = value;
+  sel.onchange = () => onChange(sel.value as T);
+  return sel;
+}
+
+/** The word before a filter that says how it joins the ones before it. */
+function linkWord(conj: Conjunction, index: number): string {
+  if (conj === "not") return index === 0 ? "Not" : "and not";
+  return index === 0 ? "Where" : conj;
+}
+
+function filterNode(node: FilterNode, parent: FilterGroup | undefined, depth: number): HTMLElement {
+  const remove = () => {
+    if (!parent) return;
+    parent.children.splice(parent.children.indexOf(node), 1);
+    rulesChanged(true);
+  };
+  if (node.kind === "group") {
+    const head = el("div", { class: "row" }, selectEl(CONJUNCTIONS.map((c) => ({ value: c.conj, label: c.label })), node.conj, (v) => {
+      node.conj = v;
+      rulesChanged(true);
+    }));
+    if (depth > 0) head.append(button("×", remove, "secondary icon", "Remove group"));
+    return el("div", { class: depth > 0 ? "filter-group nested" : "filter-group" },
+      head,
+      ...node.children.map((c, i) => el("div", { class: c.kind === "group" ? "filter-line has-group" : "filter-line" },
+        el("span", { class: "conj-word" }, linkWord(node.conj, i)),
+        filterNode(c, node, depth + 1))),
+      el("div", { class: "row" },
+        button("+ Add filter", () => {
+          node.children.push(newCondition());
+          rulesChanged(true);
+          // The new condition's value field, ready to type in.
+          const values = panel?.querySelectorAll<HTMLInputElement>("input.filter-value");
+          values?.[values.length - 1]?.focus();
+        }, "secondary add"),
+        button("+ Add filter group", () => {
+          node.children.push({ kind: "group", conj: "or", children: [newCondition()] });
+          rulesChanged(true);
+        }, "secondary add"),
+      ),
+    );
+  }
+  const cols = ordered(columns(), layout);
+  const known = cols.some((c) => c.id === node.column);
+  const colOptions = [...cols.map((c) => ({ value: c.id, label: c.label })), ...(known ? [] : [{ value: node.column, label: `${node.column} (not in this document)` }])];
+  const op = OPERATORS.find((o) => o.op === node.op);
+  const row = el("div", { class: "row" },
+    selectEl(colOptions, node.column, (v) => {
+      node.column = v;
+      rulesChanged(true);
+    }, "filter-column"),
+    selectEl(OPERATORS.map((o) => ({ value: o.op, label: o.label })), node.op, (v: Operator) => {
+      node.op = v;
+      rulesChanged(true);
+    }, "filter-op"),
+  );
+  if (op?.needsValue !== false) {
+    const listId = `values-${Math.random().toString(36).slice(2)}`;
+    const input = el("input", { type: "text", class: "filter-value", placeholder: node.op === "matches" ? "regular expression" : "value", value: node.value, list: listId });
+    input.oninput = () => {
+      node.value = input.value;
+      if (node.op === "matches") input.classList.toggle("invalid", !validRegex(input.value));
+      rulesChanged(false);
+    };
+    const list = el("datalist", { id: listId }, ...suggestions(node.column).map((v) => el("option", { value: v })));
+    row.append(input, list);
+  }
+  row.append(button("×", remove, "secondary icon", "Remove filter"));
+  return row;
+}
+
+function validRegex(source: string): boolean {
+  try {
+    new RegExp(source);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function filterPanel(): HTMLElement {
+  const box = el("div", { class: "popover filter-panel" });
+  box.onclick = (e) => e.stopPropagation();
+  const clear = button("Clear", () => {
+    state.rules = structuredClone(EMPTY_GROUP);
+    rulesChanged(true);
+  }, "secondary", "Remove every filter rule");
+  const where = allDocs() ? "all documents" : "this document";
+  box.append(
+    el("div", { class: "popover-head" }, el("strong", {}, "Filters"), el("span", { class: "muted" }, `in ${where}`), el("span", { class: "spacer" }), clear),
+    el("div", { class: "filter-body" }, filterNode(rules(), undefined, 0)),
+  );
+  return box;
 }
 
 /** A column can be dragged onto another, in the header (x) or in the columns panel (y). */
@@ -729,6 +909,8 @@ window.addEventListener("message", (e: MessageEvent<ToWebview>) => {
     file = undefined;
   } else if (msg.type === "load") {
     error = undefined;
+    // The rules of this tab, else those kept for the file.
+    if (!file && !state.rules?.children.length) state.rules = msg.rules ?? structuredClone(EMPTY_GROUP);
     file = msg;
     layout = msg.layout ?? defaultLayout(msg.docs);
   }

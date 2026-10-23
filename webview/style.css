@@ -467,3 +467,89 @@ tr.flash td {
   border: 1px solid var(--vscode-notifications-border, var(--vscode-panel-border));
   box-shadow: 0 2px 8px var(--vscode-widget-shadow);
 }
+
+/* --- filter panel --- */
+
+button.on {
+  color: var(--vscode-button-foreground);
+  background: var(--vscode-button-background);
+}
+
+.popover.filter-panel {
+  width: auto;
+  min-width: 420px;
+  max-width: min(960px, calc(100vw - 16px));
+}
+
+.popover .muted {
+  font-size: 0.9em;
+}
+
+.filter-body {
+  overflow: auto;
+  padding: 8px;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.filter-group.nested {
+  padding: 6px 0 6px 10px;
+  border-left: 2px solid var(--vscode-panel-border);
+}
+
+.filter-group .row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.filter-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.filter-line.has-group {
+  align-items: flex-start;
+}
+
+.filter-line.has-group > .conj-word {
+  padding-top: 10px;
+}
+
+.filter-line > .filter-group.nested {
+  flex: 1;
+}
+
+.conj-word {
+  flex: none;
+  width: 52px;
+  text-align: right;
+  color: var(--vscode-descriptionForeground);
+}
+
+.filter-column {
+  max-width: 200px;
+}
+
+.filter-value {
+  width: 160px;
+}
+
+.filter-value.invalid {
+  border-color: var(--vscode-inputValidation-errorBorder);
+}
+
+button.add {
+  background: transparent;
+  color: var(--vscode-textLink-foreground);
+  padding: 2px 4px;
+}
+
+button.add:hover {
+  background: var(--vscode-toolbar-hoverBackground, var(--vscode-list-hoverBackground));
+}

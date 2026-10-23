@@ -43,8 +43,24 @@ the file is never changed.
   - `-draft`: must not occur.
   - `/^LH-0\d+$/`: a regular expression.
 
+- **Filter rules:** *Filter ▾* builds filters as in vscode-bases. *+ Add
+  filter* adds a condition: a column (also a hidden one), an operator and a
+  value. The value field suggests the values the column holds.
+  - Operators: *is*, *is not*, *contains*, *does not contain*, *starts
+    with*, *ends with*, *is empty*, *is not empty*, *>*, *≥*, *<*, *≤*,
+    *matches regex*. Case does not matter. *is* matches one value of a
+    list, so `Verification is Test` finds "Test, Analysis".
+  - *>* and *<* compare numbers as numbers; dates (`2026-01-31`) and text
+    in order.
+  - The top line says how the conditions join: *All* (and), *Any* (or) or
+    *None* (not). *+ Add filter group* adds a group with its own choice, so
+    `Status is Approved and (Priority ≤ 1 or Safety relevant is true)`
+    works. × removes a condition or group.
+  - The button shows how many conditions filter. The rules are kept per
+    file, also after VS Code restarts.
+
   *Context* keeps the chapters and parents of each match, dimmed, so you can
-  see where a match is. *Clear filters* empties all of them. Ctrl+F (Cmd+F)
+  see where a match is. *Clear filters* empties the search, the column filters and the rules. Ctrl+F (Cmd+F)
   goes to the search box.
 - **Rich text:** XHTML attributes show formatted: paragraphs, lists,
   tables, bold, italic. Pictures embedded in a `.reqifz`, or next to a
